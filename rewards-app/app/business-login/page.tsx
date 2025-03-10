@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,12 @@ export default function BusinessLogin() {
     e.preventDefault();
     setIsLoggedIn(true);
   };
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      router.push("/business-dashboard");
+    }
+  }, [isLoggedIn, router]);
 
   if (!isLoggedIn) {
     return (
@@ -41,5 +47,7 @@ export default function BusinessLogin() {
         </div>
       </div>
     );
-  } else router.push("/business-dashboard");
+  }
+
+  return null;
 }

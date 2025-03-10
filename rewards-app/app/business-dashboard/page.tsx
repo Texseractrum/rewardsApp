@@ -5,13 +5,60 @@ import { Card } from "@/components/ui/button-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useQRCode } from "next-qrcode";
 
 export default function BusinessDashboard() {
   const router = useRouter();
+  const [showPopup, setShowPopup] = useState(false);
+  const [points, setPoints] = useState(0);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [expiryTime, setExpiryTime] = useState<Date | null>(null);
+  const { Canvas } = useQRCode();
 
   const handleLogout = () => {
     router.push("/");
   };
+
+  const handleGivePoints = () => {
+    setShowPopup(true);
+  };
+
+  const handleConfirmPoints = async () => {
+    const codeId = Math.random().toString(36).substring(2, 15);
+    const shopId = "dummy_shop_id";
+    const pointsEarned = points;
+
+    // Send POST request
+    await fetch("/api/newtransaction", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ code_id: codeId, points_earned: pointsEarned, shop_id: shopId }),
+    });
+
+    // Generate QR code
+    setQrCode(codeId);
+    setExpiryTime(new Date(Date.now() + 5 * 60 * 1000)); // 5 minutes from now
+    setShowPopup(false);
+  };
+
+  const handleClosePopup = () => {
+    setShowPopup(false);
+  };
+
+  // Check for QR code expiry
+  useEffect(() => {
+    if (expiryTime) {
+      const timer = setTimeout(() => {
+        setQrCode(null);
+        setExpiryTime(null);
+      }, expiryTime.getTime() - Date.now());
+
+      return () => clearTimeout(timer);
+    }
+  }, [expiryTime]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
@@ -38,6 +85,23 @@ export default function BusinessDashboard() {
               1 point per $1 spent
             </p>
           </div>
+          {qrCode && (
+            <div className="mt-4">
+              <Canvas
+                text={qrCode}
+                options={{
+                  margin: 3,
+                  scale: 4,
+                  width: 128,
+                  color: {
+                    dark: '#000000',
+                    light: '#FFFFFF',
+                  },
+                }}
+              />
+              <p className="text-xs text-muted-foreground mt-2">Expires in 5 minutes</p>
+            </div>
+          )}
         </Card>
 
         <div className="grid grid-cols-2 gap-4">
@@ -49,11 +113,33 @@ export default function BusinessDashboard() {
             <Share size={20} />
             <span>Share Card</span>
           </Button>
-          <Button className="h-14 space-x-2" onClick={() => {}}>
+          <Button className="h-14 space-x-2" onClick={handleGivePoints}>
             <Plus size={20} />
             <span>Give Points</span>
           </Button>
         </div>
+
+        {showPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              <h3 className="text-lg font-semibold mb-4">Enter Points</h3>
+              <Input
+                type="number"
+                value={points}
+                onChange={(e) => setPoints(Number(e.target.value))}
+                className="mb-4"
+              />
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={handleClosePopup}>
+                  Cancel
+                </Button>
+                <Button onClick={handleConfirmPoints}>
+                  Confirm
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
