@@ -147,6 +147,38 @@ def get_shops():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# New transaction endpoint
+@app.route('/api/newtransaction', methods=['POST'])
+def add_transaction():
+    try:
+        data = request.json
+        
+        # Validate required fields
+        required_fields = ['customer_id', 'shop_id', 'points', 'transaction_date']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+        
+        # Insert transaction data using admin client to bypass RLS
+        transaction_data = {
+            "customer_id": data['customer_id'],
+            "shop_id": data['shop_id'],
+            "points": data['points'],
+            "transaction_date": data['transaction_date']
+        }
+        
+        # Insert into Transactions table
+        response = admin_supabase.table("Transactions").insert(transaction_data).execute()
+        
+        return jsonify({
+            "success": True,
+            "message": "Transaction added successfully",
+            "data": response.data[0] if response.data else None
+        })
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # Run the app
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5001))
