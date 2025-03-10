@@ -20,6 +20,7 @@ export default function UserLogin() {
 
   if (!isLoggedIn) {
     return (
+      // TODO - centre content
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-full max-w-[380px] min-h-screen bg-background shadow-xl p-4">
           <form onSubmit={handleLogin} className="space-y-4">
