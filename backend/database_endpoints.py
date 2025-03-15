@@ -182,7 +182,27 @@ def add_transaction():
         print(f"Traceback: {error_traceback}")
         return jsonify({"error": str(e)}), 500
 
-# Run the app
+@app.route('api/validatetransaction', methods=['POST'])
+def validate_transaction():
+    try:
+        data = request.json
+
+        required_field = ['customer_id', 'code_id']
+
+        for field in required_field:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+
+        transaction_data = {
+            "customer_id": data['customer_id'],
+            "code_id": data['code_id']
+        }
+
+        # scan the database for a matching code_id, if there is one then add the customer_id to the transaction
+        # if there is no matching code_id, return an error message
+        # if there is a matching code_id but the customer_id is already in the transaction, return an error message
+
+
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5001))
     print(f"Starting Flask server on port {port}...")
