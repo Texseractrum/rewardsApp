@@ -26,29 +26,27 @@ export default function BusinessDashboard() {
 
   const handleConfirmPoints = async () => {
     // Use fixed shop_id and customer_id as requested
-    const shop_id = 1;
-    const customer_id = 1;
+    const shop_id = 2;
     const pointsToAward = points;
-    // Generate code_id once and use it for both the transaction and QR code
     const code_id = Math.random().toString(36).substring(2, 15);
+
+    const currenturl = new URL("http://127.0.0.1");
+    currenturl.port = "5001";
+    currenturl.pathname += "/api/newtransaction";
 
     try {
       // Send POST request to backend
-      const response = await fetch(
-        "http://10.97.223.67:5001/api/newtransaction",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            shop_id,
-            customer_id,
-            points: pointsToAward,
-            code_id, // Use the generated code_id for the transaction
-          }),
-        }
-      );
+      const response = await fetch(currenturl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          shop_id,
+          points: pointsToAward,
+          code_id, // Use the generated code_id for the transaction
+        }),
+      });
 
       const data = await response.json();
 
