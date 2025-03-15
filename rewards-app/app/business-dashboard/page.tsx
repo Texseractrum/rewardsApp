@@ -25,22 +25,48 @@ export default function BusinessDashboard() {
   };
 
   const handleConfirmPoints = async () => {
-    const codeId = Math.random().toString(36).substring(2, 15);
-    const shopId = "dummy_shop_id";
-    const pointsEarned = points;
+    // Use fixed shop_id and customer_id as requested
+    const shop_id = 1;
+    const customer_id = 1;
+    const pointsToAward = points;
+    // Generate code_id once and use it for both the transaction and QR code
+    const code_id = Math.random().toString(36).substring(2, 15);
 
-    // Send POST request
-    await fetch("/api/newtransaction", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ code_id: codeId, points_earned: pointsEarned, shop_id: shopId }),
-    });
+    try {
+      // Send POST request to backend
+      const response = await fetch(
+        "http://10.97.223.67:5001/api/newtransaction",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            shop_id,
+            customer_id,
+            points: pointsToAward,
+            code_id, // Use the generated code_id for the transaction
+          }),
+        }
+      );
 
-    // Generate QR code
-    setQrCode(codeId);
-    setExpiryTime(new Date(Date.now() + 5 * 60 * 1000)); // 5 minutes from now
+      const data = await response.json();
+
+      if (data.success) {
+        console.log("Transaction recorded successfully:", data);
+
+        // Use the same code_id for the QR code that was sent to the backend
+        setQrCode(code_id);
+        setExpiryTime(new Date(Date.now() + 5 * 60 * 1000)); // 5 minutes from now
+      } else {
+        console.error("Error recording transaction:", data.error);
+        alert("Failed to record transaction. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error connecting to backend:", error);
+      alert("Failed to connect to the backend. Please try again.");
+    }
+
     setShowPopup(false);
   };
 
@@ -94,12 +120,14 @@ export default function BusinessDashboard() {
                   scale: 4,
                   width: 128,
                   color: {
-                    dark: '#000000',
-                    light: '#FFFFFF',
+                    dark: "#000000",
+                    light: "#FFFFFF",
                   },
                 }}
               />
-              <p className="text-xs text-muted-foreground mt-2">Expires in 5 minutes</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Expires in 5 minutes
+              </p>
             </div>
           )}
         </Card>
@@ -133,9 +161,7 @@ export default function BusinessDashboard() {
                 <Button variant="outline" onClick={handleClosePopup}>
                   Cancel
                 </Button>
-                <Button onClick={handleConfirmPoints}>
-                  Confirm
-                </Button>
+                <Button onClick={handleConfirmPoints}>Confirm</Button>
               </div>
             </div>
           </div>

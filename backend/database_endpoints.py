@@ -151,24 +151,29 @@ def get_shops():
 @app.route('/api/newtransaction', methods=['POST'])
 def add_transaction():
     try:
+        print("Received transaction request")
         data = request.json
+        print(f"Request data: {data}")
         
         # Validate required fields
-        required_fields = ['customer_id', 'shop_id', 'points', 'transaction_date']
+        required_fields = ['customer_id', 'shop_id', 'points', 'code_id']
         for field in required_fields:
             if field not in data:
+                print(f"Missing required field: {field}")
                 return jsonify({"error": f"Missing required field: {field}"}), 400
         
         # Insert transaction data using admin client to bypass RLS
         transaction_data = {
             "customer_id": data['customer_id'],
             "shop_id": data['shop_id'],
-            "points": data['points'],
-            "transaction_date": data['transaction_date']
+            "points_earned": data['points'],
+            "code_id": data['code_id']
         }
         
+        print(f"Attempting to insert data: {transaction_data}")
         # Insert into Transactions table
         response = admin_supabase.table("Transactions").insert(transaction_data).execute()
+        print(f"Supabase response: {response}")
         
         return jsonify({
             "success": True,
@@ -177,6 +182,10 @@ def add_transaction():
         })
             
     except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"Error in transaction endpoint: {str(e)}")
+        print(f"Traceback: {error_traceback}")
         return jsonify({"error": str(e)}), 500
 
 # Run the app
