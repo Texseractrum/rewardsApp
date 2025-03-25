@@ -158,12 +158,74 @@ export default function CustomerDashboard() {
   };
 
   // Handle successful QR code scan
-  const handleQrCodeScan = (result: string) => {
+  const handleQrCodeScan = async (result: string) => {
     console.log("QR Code scanned:", result);
-    alert(`QR Code scanned: ${result}`);
 
-    // Close the scanner after successful scan
-    setIsScannerOpen(false);
+    try {
+      const response = await fetch(
+        "https://09aa-144-82-8-189.ngrok-free.app/api/validatetransaction",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+          mode: "cors",
+          body: JSON.stringify({
+            customer_id: 1,
+            code_id: result,
+          }),
+        }
+      );
+
+      // Log the response status and headers for debugging
+      console.log("Response status:", response.status);
+      console.log(
+        "Response headers:",
+        Object.fromEntries(response.headers.entries())
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Response data:", data);
+
+      if (data.success) {
+        alert("Transaction validated successfully!");
+        // Refresh the cards or update points here if needed
+      } else {
+        alert(
+          "Failed to validate transaction: " + (data.error || "Unknown error")
+        );
+      }
+    } catch (error) {
+      console.error("Error validating transaction:", error);
+
+      // More specific error handling
+      if (error instanceof TypeError) {
+        if (error.message.includes("Failed to fetch")) {
+          alert(
+            "Network error: Unable to connect to the server. Please check your internet connection."
+          );
+        } else if (error.message.includes("CORS")) {
+          alert(
+            "CORS error: Unable to access the server. Please try again later."
+          );
+        } else {
+          alert(
+            "Connection error: Please check your internet connection and try again."
+          );
+        }
+      } else {
+        alert("Failed to validate transaction. Please try again later.");
+      }
+    } finally {
+      // Always close the scanner after attempting validation
+      setIsScannerOpen(false);
+    }
   };
 
   // Only render the full UI on the client side

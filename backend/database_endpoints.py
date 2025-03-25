@@ -182,10 +182,11 @@ def add_transaction():
         print(f"Traceback: {error_traceback}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('api/validatetransaction', methods=['POST'])
+@app.route('/api/validatetransaction', methods=['POST'])
 def validate_transaction():
     try:
         data = request.json
+        print(f"Received validation request: {data}")
 
         required_field = ['customer_id', 'code_id']
 
@@ -193,15 +194,37 @@ def validate_transaction():
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
 
-        transaction_data = {
-            "customer_id": data['customer_id'],
-            "code_id": data['code_id']
-        }
+        # First, check if the transaction exists and is not already validated
+        response = supabase.table("Transactions").select("*").eq("code_id", data['code_id']).execute()
+        
+        if not response.data:
+            return jsonify({"error": "Invalid QR code or transaction not found"}), 404
+            
+        transaction = response.data[0]
+        
+        # Check if transaction is already validated (has a customer_id)
+        if transaction.get('customer_id'):
+            return jsonify({"error": "Transaction already validated"}), 400
+            
+        # Update the transaction with the customer_id
+        update_response = supabase.table("Transactions").update({
+            "customer_id": data['customer_id']
+        }).eq("code_id", data['code_id']).execute()
+        
+        if not update_response.data:
+            return jsonify({"error": "Failed to update transaction"}), 500
+            
+        return jsonify({
+            "success": True,
+            "message": "Transaction validated successfully",
+            "data": update_response.data[0]
+        })
 
-        # scan the database for a matching code_id, if there is one then add the customer_id to the transaction
-        # if there is no matching code_id, return an error message
-        # if there is a matching code_id but the customer_id is already in the transaction, return an error message
-
+    except Exception as e:
+        print(f"Error in validate_transaction: {str(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5001))

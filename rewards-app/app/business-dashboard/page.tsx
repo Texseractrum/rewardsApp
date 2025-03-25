@@ -30,8 +30,7 @@ export default function BusinessDashboard() {
     const pointsToAward = points;
     const code_id = Math.random().toString(36).substring(2, 15);
 
-    const currenturl = new URL("http://127.0.0.1");
-    currenturl.port = "5001";
+    const currenturl = new URL("https://09aa-144-82-8-189.ngrok-free.app");
     currenturl.pathname += "/api/newtransaction";
 
     try {
