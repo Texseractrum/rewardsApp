@@ -34,14 +34,60 @@ export default function CustomerDashboard() {
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const [swipeDistance, setSwipeDistance] = useState(0);
   const [isMounted, setIsMounted] = useState(false);
+  const [customerPoints, setCustomerPoints] = useState<number>(0);
 
   // This effect runs once after component mounts on the client
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  // Fetch customer points when component mounts
+  useEffect(() => {
+    const fetchPoints = async () => {
+      try {
+        const response = await fetch(
+          "https://09aa-144-82-8-189.ngrok-free.app/api/getpoints",
+          {
+            method: "POST",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+            mode: "cors",
+            credentials: "omit",
+            body: JSON.stringify({}),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          setCustomerPoints(data.points);
+        } else {
+          console.error("Failed to fetch points:", data.error);
+          setCustomerPoints(0);
+        }
+      } catch (error) {
+        console.error("Error fetching points:", error);
+        setCustomerPoints(0);
+      }
+    };
+
+    if (isMounted) {
+      fetchPoints();
+    }
+  }, [isMounted]);
+
   const demoCards = [
-    { name: "Star Coffee", icon: Coffee, points: 150, color: "bg-amber-100" },
+    {
+      name: "Star Coffee",
+      icon: Coffee,
+      points: customerPoints,
+      color: "bg-amber-100",
+    },
     { name: "Pizza Palace", icon: Pizza, points: 75, color: "bg-red-100" },
     {
       name: "Fashion Store",
@@ -169,7 +215,6 @@ export default function CustomerDashboard() {
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
-            "Access-Control-Allow-Origin": "*",
           },
           mode: "cors",
           body: JSON.stringify({
@@ -177,13 +222,6 @@ export default function CustomerDashboard() {
             code_id: result,
           }),
         }
-      );
-
-      // Log the response status and headers for debugging
-      console.log("Response status:", response.status);
-      console.log(
-        "Response headers:",
-        Object.fromEntries(response.headers.entries())
       );
 
       if (!response.ok) {
@@ -195,7 +233,27 @@ export default function CustomerDashboard() {
 
       if (data.success) {
         alert("Transaction validated successfully!");
-        // Refresh the cards or update points here if needed
+        // Fetch updated points after successful validation
+        const pointsResponse = await fetch(
+          "https://09aa-144-82-8-189.ngrok-free.app/api/getpoints",
+          {
+            method: "POST",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+            mode: "cors",
+            credentials: "omit",
+            body: JSON.stringify({}),
+          }
+        );
+
+        if (pointsResponse.ok) {
+          const pointsData = await pointsResponse.json();
+          if (pointsData.success) {
+            setCustomerPoints(pointsData.points);
+          }
+        }
       } else {
         alert(
           "Failed to validate transaction: " + (data.error || "Unknown error")
@@ -203,27 +261,8 @@ export default function CustomerDashboard() {
       }
     } catch (error) {
       console.error("Error validating transaction:", error);
-
-      // More specific error handling
-      if (error instanceof TypeError) {
-        if (error.message.includes("Failed to fetch")) {
-          alert(
-            "Network error: Unable to connect to the server. Please check your internet connection."
-          );
-        } else if (error.message.includes("CORS")) {
-          alert(
-            "CORS error: Unable to access the server. Please try again later."
-          );
-        } else {
-          alert(
-            "Connection error: Please check your internet connection and try again."
-          );
-        }
-      } else {
-        alert("Failed to validate transaction. Please try again later.");
-      }
+      alert("Failed to validate transaction. Please try again later.");
     } finally {
-      // Always close the scanner after attempting validation
       setIsScannerOpen(false);
     }
   };

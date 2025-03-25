@@ -22,7 +22,23 @@ supabase: Client = create_client(url, key)  # For user operations
 # Create Flask app
 app = Flask(__name__)
 # Enable CORS for all routes and origins
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Accept", "Authorization"],
+        "supports_credentials": False
+    }
+})
+
+# Add OPTIONS handling for all routes
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Accept,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers.add('Content-Type', 'application/json')
+    return response
 
 # Customer registration endpoint
 @app.route('/api/customer/add', methods=['POST'])
@@ -206,7 +222,19 @@ def validate_transaction():
         if transaction.get('customer_id'):
             return jsonify({"error": "Transaction already validated"}), 400
             
-        # Update the transaction with the customer_id
+        # Get the points from the transaction
+        points_to_add = transaction.get('points_earned', 0)
+        
+        # Get current customer points
+        customer_response = supabase.table("Customers").select("points").eq("customer_id", data['customer_id']).execute()
+        
+        if not customer_response.data:
+            return jsonify({"error": "Customer not found"}), 404
+            
+        current_points = customer_response.data[0].get('points', 0)
+        new_points = current_points + points_to_add
+        
+        # Update both the transaction and customer points in a single response
         update_response = supabase.table("Transactions").update({
             "customer_id": data['customer_id']
         }).eq("code_id", data['code_id']).execute()
@@ -214,10 +242,21 @@ def validate_transaction():
         if not update_response.data:
             return jsonify({"error": "Failed to update transaction"}), 500
             
+        # Update customer points
+        customer_update = supabase.table("Customers").update({
+            "points": new_points
+        }).eq("customer_id", data['customer_id']).execute()
+        
+        if not customer_update.data:
+            return jsonify({"error": "Failed to update customer points"}), 500
+            
         return jsonify({
             "success": True,
             "message": "Transaction validated successfully",
-            "data": update_response.data[0]
+            "data": {
+                "transaction": update_response.data[0],
+                "customer": customer_update.data[0]
+            }
         })
 
     except Exception as e:
@@ -225,6 +264,40 @@ def validate_transaction():
         import traceback
         print(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/getpoints', methods=['POST', 'OPTIONS'])
+def get_customer_points():
+    if request.method == 'OPTIONS':
+        return '', 204
+        
+    try:
+        # Get points for customer_id = 1
+        customer_id = 1  # Hardcoded as requested
+        response = supabase.table("Customers").select("points").eq("customer_id", customer_id).execute()
+        
+        if not response.data:
+            return jsonify({
+                "success": False,
+                "error": "Customer not found"
+            }), 404
+            
+        # Ensure points is a number
+        points = int(response.data[0].get('points', 0))
+        
+        return jsonify({
+            "success": True,
+            "customer_id": customer_id,
+            "points": points
+        }), 200
+
+    except Exception as e:
+        print(f"Error in get_customer_points: {str(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5001))
